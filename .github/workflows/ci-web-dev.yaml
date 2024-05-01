@@ -41,19 +41,12 @@ jobs:
       - name: Update Kubernetes resources - web
         run: |
           git --version
-          cd gitops-bootcamp/web/
+          git clone https://${{ secrets.ACTIONS_SYSTEM_USER }}@github.com/devops-bootcamp-sre/bootcamp-devops-gitops.git
+          cd services/bootcamp-devops-web/
           kustomize edit set image abalderasp/bootcamp-devops-web=abalderasp/bootcamp-devops-web:${{ github.sha }}
           cat kustomization.yaml
-
-      - name: Commit files
-        run: |
           git config --local user.email "abalderas@occ.com.mx"
           git config --local user.name "abalderasp"
           git commit -am "rolling image to tag $GITHUB_SHA"
-
-      - name: Push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.ACTIONS_SYSTEM_USER }}
-          branch: ${{ github.ref }}
+          git push origin main
       
