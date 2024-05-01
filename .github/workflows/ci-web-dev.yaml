@@ -2,8 +2,7 @@ name: CI - bootcamp-devops-project1 - web - dev
 on:
   push:
     branches: [ "development" ]
-  workflow_dispatch:
-  
+  workflow_dispatch:  
 jobs:
   build:
     runs-on: ubuntu-latest
