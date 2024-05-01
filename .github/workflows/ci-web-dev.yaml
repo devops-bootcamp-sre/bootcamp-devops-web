@@ -40,6 +40,7 @@ jobs:
           
       - name: Update Kubernetes resources - web
         run: |
+          git --version
           cd gitops-bootcamp/web/
           kustomize edit set image abalderasp/bootcamp-devops-web=abalderasp/bootcamp-devops-web:${{ github.sha }}
           cat kustomization.yaml
