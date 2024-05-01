@@ -1,0 +1,25 @@
+version: '3.9'
+services:
+  api:
+    image: api:latest
+    build:
+      context: ./api
+    ports:
+      - 5000:5000
+    networks:
+      - web-net
+
+  frontend:
+    image: front:latest
+    build: ./web
+    ports:
+      - 5173:5173
+    networks:
+      - web-net
+    depends_on:
+      - api
+
+networks:
+  web-net:
+    driver: bridge
+
