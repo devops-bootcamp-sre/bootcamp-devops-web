@@ -1,0 +1,71 @@
+name: CI - bootcamp-devops-project1 - web - production
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Get SHORT_SHA
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV 
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}           
+     
+      - name: Build and push - Web
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          file: Dockerfile
+          tags: gitopsdevopsbootcamp/bootcamp-devops-web-prod:${{ env.SHORT_SHA }}
+          
+      
+  gitops:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
+        
+      - name: Get SHORT_SHA
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
+        with:
+          repository: devops-bootcamp-sre/bootcamp-devops-gitops
+          token: ${{ secrets.ACCESS_TOKEN}}
+
+      - name: Kustomize 
+        uses: imranismail/setup-kustomize@v2
+      - run: |
+          git config --global user.email "tt7886081@gmail.com"
+          git config --global user.name "gitops-devops-bootcamp"
+          cd services/bootcamp-devops-web/production
+          kustomize edit set image gitopsdevopsbootcamp/bootcamp-devops-web-prod:${{ env.SHORT_SHA }}
+          git add .
+          git commit -m "Update production image to tag ${{ env.SHORT_SHA }}"
+          git push origin main
+      
+      - name: Status Notify    
+        uses: sarisia/actions-status-discord@v1
+        if: always()
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "CI - production"
+      
