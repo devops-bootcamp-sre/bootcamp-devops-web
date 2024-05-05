@@ -1,4 +1,4 @@
-name: CI - bootcamp-devops-project1 - web - prod
+name: CI - bootcamp-devops-project1 - web - production
 on:
   push:
     branches: [ "main" ]
