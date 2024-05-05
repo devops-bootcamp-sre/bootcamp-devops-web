@@ -7,6 +7,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Get SHORT_SHA
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV 
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -18,34 +23,49 @@ jobs:
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}      
-      -
-        name: Build and push - Web
+          password: ${{ secrets.DOCKERHUB_TOKEN }}           
+     
+      - name: Build and push - Web
         uses: docker/build-push-action@v5
         with:
           push: true
           file: Dockerfile
-          tags: abalderasp/bootcamp-devops-web-dev:${{ github.sha }}
+          tags: gitopsdevopsbootcamp/bootcamp-devops-web-dev:${{ env.SHORT_SHA }}
           
-      - name: "Git checkout"
-        uses: "actions/checkout@v2"
+      
+  gitops:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
+        
+      - name: Get SHORT_SHA
+        run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
         with:
-          token: ${{ secrets.ACTIONS_SYSTEM_USER }}
-    
-      - name: Setup Kustomize
-        uses: imranismail/setup-kustomize@v1
-        with:
-          kustomize-version: "3.6.1"
-          
-      - name: Update Kubernetes resources - web
-        run: |
-          git --version
-          git clone https://${{ secrets.ACTIONS_SYSTEM_USER }}@github.com/devops-bootcamp-sre/bootcamp-devops-gitops.git
-          cd bootcamp-devops-gitops/services/bootcamp-devops-web/development
-          kustomize edit set image abalderasp/bootcamp-devops-web-dev=abalderasp/bootcamp-devops-web-dev:${{ github.sha }}
-          cat kustomization.yaml
-          git config --local user.email "abalderas@occ.com.mx"
-          git config --local user.name "abalderasp"
-          git commit -am "rolling image to tag $GITHUB_SHA"
+          repository: devops-bootcamp-sre/bootcamp-devops-gitops
+          token: ${{ secrets.ACCESS_TOKEN}}
+
+      - name: Kustomize 
+        uses: imranismail/setup-kustomize@v2
+      - run: |
+          git config --global user.email "tt7886081@gmail.com"
+          git config --global user.name "gitops-devops-bootcamp"
+          cd services/bootcamp-devops-web/development
+          kustomize edit set image gitopsdevopsbootcamp/bootcamp-devops-web-dev:${{ env.SHORT_SHA }}
+          git add .
+          git commit -m "Update development image to tag ${{ env.SHORT_SHA }}"
           git push origin main
+      
+      - name: Status Notify    
+        uses: sarisia/actions-status-discord@v1
+        if: always()
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "CI - Development"
       
