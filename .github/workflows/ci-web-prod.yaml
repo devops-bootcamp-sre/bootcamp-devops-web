@@ -1,0 +1,51 @@
+name: CI - bootcamp-devops-project1 - web - dev
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:  
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}      
+      -
+        name: Build and push - Web
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          file: Dockerfile
+          tags: abalderasp/bootcamp-devops-web-dev:${{ github.sha }}
+          
+      - name: "Git checkout"
+        uses: "actions/checkout@v2"
+        with:
+          token: ${{ secrets.ACTIONS_SYSTEM_USER }}
+    
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v1
+        with:
+          kustomize-version: "3.6.1"
+          
+      - name: Update Kubernetes resources - web
+        run: |
+          git --version
+          git clone https://${{ secrets.ACTIONS_SYSTEM_USER }}@github.com/devops-bootcamp-sre/bootcamp-devops-gitops.git
+          cd bootcamp-devops-gitops/services/bootcamp-devops-web/development
+          kustomize edit set image abalderasp/bootcamp-devops-web-dev=abalderasp/bootcamp-devops-web-dev:${{ github.sha }}
+          cat kustomization.yaml
+          git config --local user.email "abalderas@occ.com.mx"
+          git config --local user.name "abalderasp"
+          git commit -am "rolling image to tag $GITHUB_SHA"
+          git push origin main
+      
